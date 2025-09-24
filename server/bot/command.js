@@ -51,7 +51,6 @@ export const setBotCommand = tryCatchWrapper(async (bot) => {
   bot.command(
     "connect",
     tryCatchWrapper(async (ctx) => {
-      console.log({ ctx });
       const [host, username, password] = ctx.payload.trim().split(/\s+/); // in js regex written in /.../    \s = single space  + for one or more consecutive space
       if (!host || !username || !password)
         return ctx.reply(
@@ -74,8 +73,19 @@ export const setBotCommand = tryCatchWrapper(async (bot) => {
     })
   );
 
+    bot.command(
+    "disconnect",
+    tryCatchWrapper(async (ctx) => {
+      if (!(await sessionValidate(ctx))) return;
+      const session = await getSession(ctx);
+      session['ssh'].dispose();
+      userSessions.delete(ctx.from.id);
+      ctx.reply('Disconnected from vm successfully');
+    })
+  );
+
   bot.hears(
-    /^cd\s+.+/,
+    /^\s*cd\s+.+/,
     tryCatchWrapper(async (ctx) => {
       if (!(await sessionValidate(ctx))) return;
       const output = await execute(ctx);
@@ -102,14 +112,5 @@ export const setBotCommand = tryCatchWrapper(async (bot) => {
     })
   );
 
-  bot.command(
-    "disconnect",
-    tryCatchWrapper(async (ctx) => {
-      if (!(await sessionValidate(ctx))) return;
-      const session = await getSession(ctx);
-      session['ssh'].dispose();
-      userSessions.delete(ctx.from.id);
-      ctx.reply('Disconnected from vm successfully');
-    })
-  );
+
 });

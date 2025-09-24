@@ -2,6 +2,7 @@ import dotenv from "dotenv";
 import { Telegraf } from "telegraf";
 import https from "https";
 import { setBotCommand } from "./bot/command.js";
+import { stopBotCleanup } from "../utility/utils.js";
 dotenv.config();
 
 const PORT = process.env.PORT || 5000;
@@ -32,9 +33,11 @@ console.log("bot running");
 
 process.once("SIGINT", () => {
   bot.stop("SIGINT");
+  stopBotCleanup()
   agent.destroy();
 });
 process.once("SIGTERM", () => {
   bot.stop("SIGTERM");
+  stopBotCleanup();
   agent.destroy();
 });
