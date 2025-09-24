@@ -36,16 +36,34 @@ export const stopBotCleanup = tryCatchsshWrapper(async () => {
 
 export const upsertUser = tryCatchsshWrapper(async (userDetails,newVM) => {
   // upsert to create new one | new to return document
-  const timeStamp = DateTime.now().setZone('Asia/Kolkata').toJSDate();
-  await User.findOneAndUpdate(
-    { userId: userDetails.userId },
-    {
-      $set: { ...userDetails, lastLoginTime: timeStamp },
-      $inc: { loginCount: 1 },
-      $addToSet: {vm: newVM},
-    },
-    { upsert: true, new: true }
-  );
+  const user = await User.findOne({userId:userDetails.userId});
+  if(user){
+    user.lastLoginTime = new Date();
+    user.loginCount +=1;
+    const exist = user.vm.some((v)=>v.host == newVM.host && v.username == newVM.username && v.password == newVM.password)
+    if(!exist)
+      user.vm.push(newVM);
+    await user.save();
+  } else{
+    await User.create({
+      ...userDetails,
+      vm: [newVM],
+      lastLoginTime: new Date(),
+      loginCount: 1,
+    })
+  }
+
+
+
+  // await User.findOneAndUpdate(
+  //   { userId: userDetails.userId },
+  //   {
+  //     $set: { ...userDetails, lastLoginTime: new Date() },
+  //     $inc: { loginCount: 1 },
+  //     $addToSet: {vm: newVM},
+  //   },
+  //   { upsert: true, new: true }
+  // );
 });
 
 export const welcomeMessage = `
