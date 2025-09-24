@@ -1,9 +1,10 @@
 import dotenv from "dotenv";
+dotenv.config();
 import { Telegraf } from "telegraf";
 import https from "https";
 import { setBotCommand } from "./bot/command.js";
-import { stopBotCleanup } from "../utility/utils.js";
-dotenv.config();
+import { stopBotCleanup } from "./utility/utils.js";
+import { connectDB } from "./db/connection1.db.js";
 
 const PORT = process.env.PORT || 5000;
 
@@ -18,6 +19,7 @@ const bot = new Telegraf(process.env.BOT_TOKEN_sshvm101Bot, {
   },
 });
 
+connectDB();
 setBotCommand(bot);
 
 

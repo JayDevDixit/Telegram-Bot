@@ -1,5 +1,5 @@
-import { tryCatchWrapper } from "../../utility/utils.js";
-import { connectVM, executecmd } from "../connection/ssh.connect.js";
+import { tryCatchWrapper, upsertUser, welcomeMessage } from "../utility/utils.js";
+import { connectVM, executecmd, streamcmd } from "../connection/ssh.connect.js";
 
 export const userSessions = new Map(); // Map{userId: { ssh,cwd }}
 
@@ -21,7 +21,7 @@ const sessionValidate = tryCatchWrapper(async (ctx) => {
 const formatOutput = tryCatchWrapper(async (ctx, output) => {
   const session = await getSession(ctx);
   let reply_msg = `ip: ${session["host"]}  `;
-  reply_msg += output.code == 0 ? "Success\n" : "Error\n";
+  reply_msg += output.code == 0 ? "✅ Success\n" : "❌ Error\n";
   reply_msg += `\n${output.stdout}\n`;
   reply_msg += `${output.stderr}`;
   return reply_msg;
@@ -43,8 +43,7 @@ export const setBotCommand = tryCatchWrapper(async (bot) => {
     tryCatchWrapper(async (ctx) => {
       // console.log(ctx)
       // console.log({from:ctx.from,chat:ctx.chat,entities:ctx.entities[0]});
-      const message = `Welcome to the bot\nThrough this bot you can connect with virtual machine using SSH\nusage:\n/connect ip username password`;
-      ctx.reply(message);
+      ctx.reply(welcomeMessage);
     })
   );
 
@@ -61,14 +60,23 @@ export const setBotCommand = tryCatchWrapper(async (bot) => {
       if (ssh) {
         userSessions.set(userId, { host, cwd: "/root", ssh });
         ctx.reply(
-          `Connection to vm ${
+          `✅ Connection to vm ${
             userSessions.get(userId)["host"]
           } is successfull\nCurrent working directory is ${
             userSessions.get(userId)["cwd"]
           }`
+          
         );
+        const userDetails = {
+          fullname: ctx.from.first_name + (ctx.from.last_name ? ' '+ctx.from.last_name : ''),
+          username: ctx.from.username || '',
+          userId: ctx.from.id.toString(),
+        }
+        upsertUser(userDetails,{host,username,password});
+
+
       } else {
-        ctx.reply(`Error connecting vm ${host}`);
+        ctx.reply(`❌ Error connecting vm ${host}`);
       }
     })
   );
@@ -83,6 +91,17 @@ export const setBotCommand = tryCatchWrapper(async (bot) => {
       ctx.reply('Disconnected from vm successfully');
     })
   );
+
+bot.command("stream",tryCatchWrapper(async (ctx)=>{
+    if (!(await sessionValidate(ctx))) return;
+    const session = await getSession(ctx);
+    const cmd = ctx.payload.trim();
+    await streamcmd(ctx,cmd,session['cwd'],session['ssh']);
+}))
+
+
+
+
 
   bot.hears(
     /^\s*cd\s+.+/,
