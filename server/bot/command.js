@@ -1,24 +1,24 @@
 import { inputHost, inputPassword, inputUsername, startLoginWizard, tryCatchWrapper, upsertUser, welcomeMessage } from "../utility/utils.js";
 import { connectVM, executecmd, streamcmd } from "../connection/ssh.connect.js";
 import User from "../Models/user.model.js";
-import { Markup,Scenes, session as sessionMiddleware } from 'telegraf';
+import { Markup, Scenes, session as sessionMiddleware } from 'telegraf';
 
 export const userSessions = new Map(); // Map{userId: { ssh,cwd }}
-const {WizardScene, Stage} = Scenes;
-const loginWizard = new WizardScene('login-wizard',startLoginWizard,inputHost,inputUsername,inputPassword);
+const { WizardScene, Stage } = Scenes;
+const loginWizard = new WizardScene('login-wizard', startLoginWizard, inputHost, inputUsername, inputPassword);
 const stage = new Stage([loginWizard]);
 
-const showSavedvms = tryCatchWrapper(async (ctx)=>{
-    const userDetail = await User.findOne({userId: ctx.from.id});
-    const buttons = [[Markup.button.callback(`Connect New Virtual Machine`,JSON.stringify({'NewConnection':true}))]];
-    if(!userDetail || !userDetail.vm || userDetail.vm.length < 1) return buttons;
-    for(let vm of userDetail.vm){
-      if(!vm.host || !vm.username || !vm.password) continue;
-        buttons.push(
-          [Markup.button.callback(`Connect ${vm.username}@${vm.host}`,JSON.stringify({'host':vm.host,'username':vm.username,'password':vm.password}))]
-        );
-    }
-    return Markup.inlineKeyboard(buttons);
+const showSavedvms = tryCatchWrapper(async (ctx) => {
+  const userDetail = await User.findOne({ userId: ctx.from.id });
+  const buttons = [[Markup.button.callback(`🖥️ Connect New Virtual Machine`, JSON.stringify({ 'NewConnection': true }))]];
+  if (!userDetail || !userDetail.vm || userDetail.vm.length < 1) return buttons;
+  for (let vm of userDetail.vm) {
+    if (!vm.host || !vm.username || !vm.password) continue;
+    buttons.push(
+      [Markup.button.callback(`💻 Connect ${vm.username}@${vm.host}`, JSON.stringify({ 'host': vm.host, 'username': vm.username, 'password': vm.password }))]
+    );
+  }
+  return Markup.inlineKeyboard(buttons);
 });
 
 const getSession = tryCatchWrapper(async (ctx) => {
@@ -31,10 +31,10 @@ const sessionValidate = tryCatchWrapper(async (ctx) => {
   const session = await getSession(ctx);
   if (!session || !session.ssh.isConnected()) {
     const keyboard = await showSavedvms(ctx);
-    if(keyboard)
-      ctx.reply(`First connect with vm using \n/connect ip username password`,keyboard);
-    else 
-      ctx.reply(`First connect with vm using \n/connect ip username password`);
+    if (keyboard)
+      ctx.reply(`🔌 Connect with a VM using \n/connect ip username password`, keyboard);
+    else
+      ctx.reply(`🔌 Connect with a VM using \n/connect ip username password`);
     return false;
   }
   return true;
@@ -42,7 +42,7 @@ const sessionValidate = tryCatchWrapper(async (ctx) => {
 
 const formatOutput = tryCatchWrapper(async (ctx, output) => {
   const session = await getSession(ctx);
-  let reply_msg = `ip: ${session["host"]}  `;
+  let reply_msg = `🌐 IP: ${session["host"]}  `;
   reply_msg += output.code == 0 ? "✅ Success\n" : "❌ Error\n";
   reply_msg += `\n${output.stdout}\n`;
   reply_msg += `${output.stderr}`;
@@ -56,38 +56,30 @@ const execute = tryCatchWrapper(async (ctx) => {
     session["cwd"],
     session["ssh"]
   );
-
   return output;
 });
 
-export const buildConnection = tryCatchWrapper(async (ctx,{host,username,password})=>{
-        if (!host || !username || !password)
-        return await ctx.reply(
-          `Invalid input\nCorrect usage is:\n/connect ip username password`
-        );
-      const ssh = await connectVM({ host, username, password });
-      const userId = ctx.from.id;
-      if (ssh) {
-        userSessions.set(userId, { host, cwd: "/root", ssh });
-        ctx.reply(
-          `✅ Connection to vm ${
-            userSessions.get(userId)["host"]
-          } is successfull\nCurrent working directory is ${
-            userSessions.get(userId)["cwd"]
-          }`
-          
-        );
-        const userDetails = {
-          fullname: ctx.from.first_name + (ctx.from.last_name ? ' '+ctx.from.last_name : ''),
-          username: ctx.from.username || '',
-          userId: ctx.from.id.toString(),
-        }
-        upsertUser(userDetails,{host,username,password});
-
-
-      } else {
-        ctx.reply(`❌ Error connecting vm ${host}`);
-      }
+export const buildConnection = tryCatchWrapper(async (ctx, { host, username, password }) => {
+  if (!host || !username || !password)
+    return await ctx.reply(
+      `❌ Invalid input\n💡 Correct usage:\n/connect ip username password`
+    );
+  const ssh = await connectVM({ host, username, password });
+  const userId = ctx.from.id;
+  if (ssh) {
+    userSessions.set(userId, { host, cwd: "/root", ssh });
+    ctx.reply(
+      `✅ Connection to VM ${userSessions.get(userId)["host"]} is successful!\nCurrent working directory: ${userSessions.get(userId)["cwd"]} 🖥️`
+    );
+    const userDetails = {
+      fullname: ctx.from.first_name + (ctx.from.last_name ? ' ' + ctx.from.last_name : ''),
+      username: ctx.from.username || '',
+      userId: ctx.from.id.toString(),
+    }
+    upsertUser(userDetails, { host, username, password });
+  } else {
+    ctx.reply(`❌ Error connecting to VM ${host}`);
+  }
 })
 
 export const setBotCommand = tryCatchWrapper(async (bot) => {
@@ -97,8 +89,6 @@ export const setBotCommand = tryCatchWrapper(async (bot) => {
 
   bot.start(
     tryCatchWrapper(async (ctx) => {
-      // console.log(ctx)
-      // console.log({from:ctx.from,chat:ctx.chat,entities:ctx.entities[0]});
       ctx.reply(welcomeMessage);
     })
   );
@@ -106,45 +96,44 @@ export const setBotCommand = tryCatchWrapper(async (bot) => {
   bot.command(
     "connect",
     tryCatchWrapper(async (ctx) => {
-      const [host, username, password] = ctx.payload.trim().split(/\s+/); // in js regex written in /.../    \s = single space  + for one or more consecutive space
-      await buildConnection(ctx,{host,username,password});
+      const [host, username, password] = ctx.payload?.trim().split(/\s+/) || [];
+      if (host && username && password)
+        await buildConnection(ctx, { host, username, password });
+      else
+        ctx.scene.enter('login-wizard');
     })
   );
 
-    bot.command(
+  bot.command(
     "disconnect",
     tryCatchWrapper(async (ctx) => {
       if (!(await sessionValidate(ctx))) return;
       const session = await getSession(ctx);
       session['ssh'].dispose();
       userSessions.delete(ctx.from.id);
-      ctx.reply('Disconnected from vm successfully');
+      ctx.reply('🛑 Disconnected from VM successfully');
     })
   );
 
-bot.command("stream",tryCatchWrapper(async (ctx)=>{
+  bot.command("stream", tryCatchWrapper(async (ctx) => {
     if (!(await sessionValidate(ctx))) return;
     const session = await getSession(ctx);
     const cmd = ctx.payload.trim();
-    await streamcmd(ctx,cmd,session['cwd'],session['ssh']);
-}))
+    await streamcmd(ctx, cmd, session['cwd'], session['ssh']);
+  }))
 
-
-bot.on('callback_query',tryCatchWrapper(async (ctx)=>{
-  const data = JSON.parse(ctx.callbackQuery.data);
-  if(!data) {
-    console.log('Error in parsing data of callback query')
-    return
-  }
-  if(data['NewConnection']){
-    ctx.scene.enter('login-wizard');
-    // console.log(ctx);
-  }
-  else{
- await buildConnection(ctx,{host:data['host'],username:data['username'],password:data['password']});
-  }
-}))
-
+  bot.on('callback_query', tryCatchWrapper(async (ctx) => {
+    const data = JSON.parse(ctx.callbackQuery.data);
+    if (!data) {
+      console.log('Error in parsing callback query data');
+      return;
+    }
+    if (data['NewConnection']) {
+      ctx.scene.enter('login-wizard');
+    } else {
+      await buildConnection(ctx, { host: data['host'], username: data['username'], password: data['password'] });
+    }
+  }))
 
   bot.hears(
     /^\s*cd\s+.+/,
@@ -153,11 +142,9 @@ bot.on('callback_query',tryCatchWrapper(async (ctx)=>{
       const output = await execute(ctx);
       if (output.code == 0 && output.stderr == "") {
         const session = await getSession(ctx);
-
         const path = ctx.text.trim().split(/\s+/)[1];
         session["cwd"] = path;
       }
-
       const reply_msg = await formatOutput(ctx, output);
       ctx.reply(reply_msg);
     })
@@ -167,16 +154,15 @@ bot.on('callback_query',tryCatchWrapper(async (ctx)=>{
     "text",
     tryCatchWrapper(async (ctx) => {
       if (!(await sessionValidate(ctx))) return;
-      //   console.log(ctx);
       const output = await execute(ctx);
       const reply_msg = await formatOutput(ctx, output);
       ctx.reply(reply_msg);
     })
   );
 
-bot.catch(tryCatchWrapper(async (err,ctx)=>{
-  ctx.reply('An Error Occured');
-  console.error('Error Occured while handling user request',err.message);
-}));
+  bot.catch(tryCatchWrapper(async (err, ctx) => {
+    ctx.reply('⚠️ An error occurred');
+    console.error('Error while handling user request', err.message);
+  }));
 
 });

@@ -8,7 +8,7 @@ export const tryCatchWrapper =
       return await fn(ctx, ...args);
     } catch (error) {
       console.error("Exception occured:", error.message);
-      ctx.reply("An error occured while processing your request");
+      ctx.reply("⚠️ An error occured while processing your request");
     }
   };
 
@@ -24,7 +24,7 @@ export const tryCatchsshWrapper =
   };
 
 export const stopBotCleanup = tryCatchsshWrapper(async () => {
-  console.log("Running Cleanups");
+  console.log("🧹 Running Cleanups");
   const dispose = [];
   userSessions.forEach((session, userId) => {
     if (session["ssh"] && session["ssh"].isConnected())
@@ -35,7 +35,6 @@ export const stopBotCleanup = tryCatchsshWrapper(async () => {
 });
 
 export const upsertUser = tryCatchsshWrapper(async (userDetails, newVM) => {
-  // upsert to create new one | new to return document
   const user = await User.findOne({ userId: userDetails.userId });
   if (user) {
     user.lastLoginTime = new Date();
@@ -60,52 +59,59 @@ export const upsertUser = tryCatchsshWrapper(async (userDetails, newVM) => {
   }
 });
 
-const ipv4Regex = /^(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)){3}$/;
-export const validateipv4 = tryCatchsshWrapper(async (ip)=>{
+const ipv4Regex =
+  /^(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)){3}$/;
+export const validateipv4 = tryCatchsshWrapper(async (ip) => {
   return ipv4Regex.test(ip);
-})
+});
 
-export const startLoginWizard = tryCatchWrapper(async (ctx)=>{
-  ctx.reply('Welcome to login\n\nEnter IP Address of Virtual Machine');
+export const startLoginWizard = tryCatchWrapper(async (ctx) => {
+  ctx.reply("👋 Welcome! Let's login.\n\n🖥️ Enter the IP Address of your Virtual Machine:");
   return ctx.wizard.next();
-})
+});
 
-export const inputHost = tryCatchWrapper(async (ctx)=>{
-  const host = ctx.message.text;
-  if(await validateipv4(host)){
-    ctx.reply('Enter the username');
+export const inputHost = tryCatchWrapper(async (ctx) => {
+  const host = ctx.message.text.trim();
+  if (host.toLowerCase() == "exit") {
+    ctx.reply(welcomeMessage);
+    return ctx.scene.leave();
+  }
+
+  if (await validateipv4(host)) {
+    ctx.reply("🧑 Enter the username for the VM:");
     ctx.wizard.state.host = host;
     return ctx.wizard.next();
   }
-  ctx.reply('Invalid Ip Address\n\nEnter IP Address of Virtual Machine');
+  ctx.reply(
+    "❌ Invalid IP Address. Type *exit* to close this wizard.\n\n🖥️ Enter IP Address of Virtual Machine"
+  );
   return;
-})
+});
 
-export const inputUsername = tryCatchWrapper(async (ctx)=>{
+export const inputUsername = tryCatchWrapper(async (ctx) => {
   ctx.wizard.state.username = ctx.message.text;
-  ctx.reply('Enter the Password')
+  ctx.reply("🔑 Enter the Password for the VM:");
   return ctx.wizard.next();
-})
+});
 
-
-export const loginvm = tryCatchWrapper(async (ctx)=>{
+export const loginvm = tryCatchWrapper(async (ctx) => {
   const credential = {
-    'host': ctx.wizard.state.host,
-    'username': ctx.wizard.state.username,
-    'password': ctx.wizard.state.password,
-  }
-  await buildConnection(ctx,credential);
-})
+    host: ctx.wizard.state.host,
+    username: ctx.wizard.state.username,
+    password: ctx.wizard.state.password,
+  };
+  await buildConnection(ctx, credential);
+});
 
-export const inputPassword = tryCatchWrapper(async (ctx)=>{
+export const inputPassword = tryCatchWrapper(async (ctx) => {
   ctx.wizard.state.password = ctx.message.text;
-  ctx.reply('Connecting to Virtual Machine');
+  ctx.reply("⏳ Connecting to Virtual Machine...");
   await loginvm(ctx);
   return ctx.scene.leave();
-})
+});
 
 export const welcomeMessage = `
-👋 Welcome to *SSH VM Connector Bot*!
+👋 Welcome to *SSH VM Connector Bot*! 🚀
 
 This bot allows you to connect to your virtual machines via SSH and run commands directly from Telegram.
 
@@ -121,5 +127,5 @@ This bot allows you to connect to your virtual machines via SSH and run commands
 
 ⚠️ Make sure your VM is accessible and the credentials are correct.
 
-Happy SSH-ing! 🚀
+Happy SSH-ing! 🖥️✨
 `;
