@@ -1,4 +1,4 @@
-import { buildConnection, userSessions } from "../bot/command.js";
+import { buildConnection, showWelcomeMessage, userSessions } from "../bot/command.js";
 import User from "../Models/user.model.js";
 
 export const tryCatchWrapper =
@@ -45,14 +45,16 @@ export const upsertUser = tryCatchsshWrapper(async (userDetails, newVM) => {
     if (existingVM) {
       if (existingVM.password != newVM.password)
         existingVM.password = newVM.password;
+      existingVM.loginCount+=1
+      existingVM.lastLoginTime = new Date();
     } else {
-      user.vm.push(newVM);
+      user.vm.push({...newVM,loginCount:1,lastLoginTime: new Date()});
     }
     await user.save();
   } else {
     await User.create({
       ...userDetails,
-      vm: [newVM],
+      vm: [{...newVM,loginCount:1,lastLoginTime: new Date()}],
       lastLoginTime: new Date(),
       loginCount: 1,
     });
@@ -66,14 +68,14 @@ export const validateipv4 = tryCatchsshWrapper(async (ip) => {
 });
 
 export const startLoginWizard = tryCatchWrapper(async (ctx) => {
-  ctx.reply("👋 Welcome! Let's login.\n\n🖥️ Enter the IP Address of your Virtual Machine:");
+  ctx.reply("👋 Welcome! Let's login.\n\n🖥️ Enter the IP Address of your Virtual Machine or Type exit to close :");
   return ctx.wizard.next();
 });
 
 export const inputHost = tryCatchWrapper(async (ctx) => {
   const host = ctx.message.text.trim();
   if (host.toLowerCase() == "exit") {
-    ctx.reply(welcomeMessage);
+    await showWelcomeMessage(ctx);
     return ctx.scene.leave();
   }
 
@@ -83,7 +85,7 @@ export const inputHost = tryCatchWrapper(async (ctx) => {
     return ctx.wizard.next();
   }
   ctx.reply(
-    "❌ Invalid IP Address. Type *exit* to close this wizard.\n\n🖥️ Enter IP Address of Virtual Machine"
+    "❌ Invalid IP Address. Type exit to close this wizard.\n\n🖥️ Enter IP Address of Virtual Machine"
   );
   return;
 });
@@ -110,6 +112,16 @@ export const inputPassword = tryCatchWrapper(async (ctx) => {
   return ctx.scene.leave();
 });
 
+export const replyPreserveFormatting = async (ctx,msg) =>{
+  try{
+      await ctx.reply(`<pre>${msg}</pre>`,{
+        parse_mode: 'HTML',
+      });
+  } catch(error){
+          await ctx.reply(msg);
+  }
+}
+
 export const welcomeMessage = `
 👋 Welcome to *SSH VM Connector Bot*! 🚀
 
@@ -117,13 +129,13 @@ This bot allows you to connect to your virtual machines via SSH and run commands
 
 💡 *Usage:*
 • Connect to a VM:
-  \`/connect <ip> <username> <password>\`
+  \`/connect ip username password\`
 
 • Disconnect from a VM:
   \`/disconnect\`
 
 • Stream a command in real-time:
-  \`/stream <command>\`
+  \`/stream command\`
 
 ⚠️ Make sure your VM is accessible and the credentials are correct.
 

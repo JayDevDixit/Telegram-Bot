@@ -40,6 +40,13 @@ const userSchema = new mongoose.Schema({
             host: {type: String, required: true},
             username: {type: String, required: true},
             password: {type: String, required: true},
+            lastLoginTime: {type: Date, required: true},
+            loginCount: {type: Number, required: true, default: 0, min: 0, 
+                validate: {
+                    validator: Number.isInteger,
+                    message: "{VALUE} is not an integer",
+                },
+            },
         },
     ],
 
