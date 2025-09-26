@@ -5,27 +5,35 @@ import https from "https";
 import { setBotCommand } from "./bot/command.js";
 import { stopBotCleanup } from "./utility/utils.js";
 import { connectDB } from "./db/connection1.db.js";
+import express from 'express';
 
 const PORT = process.env.PORT || 5000;
 
-if (!process.env.BOT_TOKEN_sshvm101Bot) {
-  console.log("No bot token found in .env");
+if (!process.env.BOT_TOKEN_sshvm101Bot || !process.env.DOMAIN) {
+  console.log("Error in getting .env variables");
   process.exit(1);
 }
-const agent = new https.Agent({ keepAlive: process.env.ENVIRONMENT == 'production' });
-const bot = new Telegraf(process.env.BOT_TOKEN_sshvm101Bot, {
-  telegram: {
-    agent,
-  },
-});
+const app = express();
+app.use(express.json());
+const DOMAIN = process.env.DOMAIN;
+const WEBHOOK_PATH = `/telegraf/${process.env.BOT_TOKEN_sshvm101Bot}`;
+
+// const agent = new https.Agent({ keepAlive: process.env.ENVIRONMENT == 'production' });
+const bot = new Telegraf(process.env.BOT_TOKEN_sshvm101Bot);
 
 connectDB();
 setBotCommand(bot);
 
-
-
-bot.launch();
-console.log("bot running");
+app.use(bot.webhookCallback(WEBHOOK_PATH));
+app.get('/',(req,res)=>{
+  res.send('Server is Running');
+})
+app.listen(PORT,async()=>{
+  console.log(`Server is running on port ${PORT}`);
+})
+const info = await bot.telegram.setWebhook(`${DOMAIN}${WEBHOOK_PATH}`);
+// bot.launch();
+console.log("bot running",info);
 
 
 
@@ -36,10 +44,10 @@ console.log("bot running");
 process.once("SIGINT", () => {
   bot.stop("SIGINT");
   stopBotCleanup()
-  agent.destroy();
+  // agent.destroy();
 });
 process.once("SIGTERM", () => {
   bot.stop("SIGTERM");
   stopBotCleanup();
-  agent.destroy();
+  // agent.destroy();
 });
