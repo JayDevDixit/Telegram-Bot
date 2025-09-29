@@ -1,7 +1,6 @@
 import dotenv from "dotenv";
 dotenv.config();
 import { Telegraf } from "telegraf";
-import https from "https";
 import { setBotCommand } from "./bot/command.js";
 import { stopBotCleanup } from "./utility/utils.js";
 import { connectDB } from "./db/connection1.db.js";
@@ -34,11 +33,6 @@ app.listen(PORT,async()=>{
 const info = await bot.telegram.setWebhook(`${DOMAIN}${WEBHOOK_PATH}`);
 // bot.launch();
 console.log("bot running",info);
-
-
-
-
-
 
 
 process.once("SIGINT", () => {
