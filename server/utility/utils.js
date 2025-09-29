@@ -125,7 +125,7 @@ export const replyPreserveFormatting = async (ctx,msg) =>{
 export const welcomeMessage = `
 👋 Welcome to *SSH VM Connector Bot*! 🚀
 
-This bot allows you to connect to your virtual machines via SSH and run commands directly from Telegram.
+This bot allows you to connect to your virtual machines via SSH, run commands, and manage files directly from Telegram.
 
 💡 *Usage:*
 • Connect to a VM:
@@ -137,7 +137,13 @@ This bot allows you to connect to your virtual machines via SSH and run commands
 • Stream a command in real-time:
   \`/stream command\`
 
+• Download a file from the VM:
+  \`/download filename\`
+
+• Upload a file to the VM:
+  Use the bot's file upload feature to send a file to your connected VM.
+
 ⚠️ Make sure your VM is accessible and the credentials are correct.
 
-Happy SSH-ing! 🖥️✨
+Happy SSH-ing and file managing! 🖥️✨
 `;

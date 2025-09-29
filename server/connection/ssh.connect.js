@@ -27,8 +27,13 @@ export const streamcmd = tryCatchWrapper(async (ctx, cmd, cwd, ssh) => {
   });
 });
 
-export const uploadFile = tryCatchsshWrapper(
+export const uploadFileToVM = tryCatchsshWrapper(
   async (locatfilePath, remotefilepath, ssh) => {
     await ssh.putFile(locatfilePath, remotefilepath);
+  }
+);
+export const downloadFileFromVM = tryCatchsshWrapper(
+  async (locatfilePath, remotefilepath, ssh) => {
+    await ssh.getFile(locatfilePath, remotefilepath);
   }
 );

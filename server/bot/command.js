@@ -10,16 +10,17 @@ import {
 } from "../utility/utils.js";
 import {
   connectVM,
+  downloadFileFromVM,
   executecmd,
   streamcmd,
-  uploadFile,
+  uploadFileToVM,
 } from "../connection/ssh.connect.js";
 import User from "../Models/user.model.js";
 import { Markup, Scenes, session as sessionMiddleware } from "telegraf";
 import fs from "fs/promises";
 import { createWriteStream } from "fs";
 import axios from "axios";
-import path, { dirname, join, resolve } from "path";
+import path, { dirname, join } from "path";
 import { fileURLToPath } from "url";
 export const userSessions = new Map(); // Map{userId: { ssh,cwd }}
 const { WizardScene, Stage } = Scenes;
@@ -32,22 +33,19 @@ const loginWizard = new WizardScene(
 );
 const stage = new Stage([loginWizard]);
 
-const getFilePath = tryCatchWrapper(async (ctx) => {
+const getdirPath = tryCatchWrapper(async (ctx) => {
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = dirname(__filename);
-  const fileName = ctx.message.document.file_name;
   const user = ctx.from.username || ctx.from.id;
-  const filePath = join(__dirname, "..", "files", user, fileName);
-  console.log("filepath", filePath);
   const dirPath = join(__dirname, "..", "files", user);
   await fs.mkdir(dirPath, { recursive: true });
-  return filePath;
+  return dirPath;
 });
 
 const downloadFile = tryCatchWrapper(async (ctx) => {
   const fileId = ctx.message.document.file_id;
   const fileLink = await ctx.telegram.getFileLink(fileId);
-  const filePath = await getFilePath(ctx);
+  const filePath = join(await getdirPath(ctx),ctx.message.document.file_name);
   const writer = createWriteStream(filePath);
   const response = await axios.get(fileLink.href, { responseType: "stream" });
   response.data.pipe(writer);
@@ -220,6 +218,24 @@ export const setBotCommand = tryCatchWrapper(async (bot) => {
     })
   );
 
+  bot.command("download",tryCatchWrapper(async (ctx)=>{
+      if (!(await sessionValidate(ctx))) return;
+      const filename = ctx.payload.trim();
+      const session = await getSession(ctx);
+      const checkFileExistcmd = `test -f ${filename} && echo 'Exist' || echo 'Not Exist'`
+      const output = await executecmd(checkFileExistcmd,session['cwd'],session['ssh']);
+      if(output.stdout=='Not Exist'){
+        ctx.reply(`File ${filename} not exist in current directory ${session['cwd']}`);
+        return;
+      }
+      const remotefilepath = join(session['cwd'],filename);
+      const localfilePath = join(await getdirPath(ctx),filename);
+      await downloadFileFromVM(localfilePath,remotefilepath,session['ssh']);
+      await ctx.replyWithDocument({
+        source:localfilePath, filename
+      })
+  }))
+
   bot.on(
     "callback_query",
     tryCatchWrapper(async (ctx) => {
@@ -251,7 +267,7 @@ export const setBotCommand = tryCatchWrapper(async (bot) => {
         session["cwd"] = path;
       }
       const reply_msg = await formatOutput(ctx, output);
-      await replyPreserveFormatting(ctx, reply_msg);
+      await ctx.reply(reply_msg);
     })
   );
 
@@ -276,7 +292,7 @@ export const setBotCommand = tryCatchWrapper(async (bot) => {
       const fileName = path.basename(localfilePath);
       const session = await getSession(ctx);
       const remotefilepath = path.posix.join(session["cwd"], fileName);
-      await uploadFile(localfilePath, remotefilepath, session["ssh"]);
+      await uploadFileToVM(localfilePath, remotefilepath, session["ssh"]);
       ctx.reply(`File Uploaded successfully in directory ${session["cwd"]}`);
     })
   );
