@@ -24,7 +24,9 @@ setBotCommand(bot);
 
 
 
-bot.launch();
+bot.launch({
+  dropPendingUpdates: true,
+});
 console.log("bot running");
 
 
