@@ -1,7 +1,9 @@
 import {
+  appendlogfile,
   inputHost,
   inputPassword,
   inputUsername,
+  intializelogfile,
   replyPreserveFormatting,
   startLoginWizard,
   tryCatchWrapper,
@@ -53,11 +55,13 @@ const downloadFile = tryCatchWrapper(async (ctx) => {
     writer.on("finish", () => {
       writer.close();
       console.log(`file downloaded ${filePath}`);
+      appendlogfile(ctx,`file downloaded ${filePath}`)
       resolve(filePath);
     });
     writer.on("error", (err) => {
       fs.unlink(filePath, () => {});
       console.log(`Error downloading file ${err.message} ${filePath}`);
+      appendlogfile(`Error downloading file ${err.message} ${filePath}`);
       reject(err);
     });
   });
@@ -152,6 +156,11 @@ export const buildConnection = tryCatchWrapper(
     const ssh = await connectVM({ host, username, password });
     const userId = ctx.from.id;
     if (ssh) {
+      const session = userSessions.get(userId);
+      if(session){
+        session["ssh"].dispose();
+        await appendlogfile(ctx,`🛑 Disconnected from VM ${session["host"]} successfully`);
+      }
       userSessions.set(userId, { host, cwd: "/", ssh });
       ctx.reply(
         `✅ Connection to VM ${
@@ -164,10 +173,12 @@ export const buildConnection = tryCatchWrapper(
         fullname:
           ctx.from.first_name +
           (ctx.from.last_name ? " " + ctx.from.last_name : ""),
-        username: ctx.from.username || "",
+        username: ctx.from.username || ctx.from.id || ctx.from.first_name || ctx.from.last_name || "unknown",
         userId: ctx.from.id.toString(),
       };
       upsertUser(userDetails, { host, username, password });
+      await intializelogfile(userDetails.username);
+      await appendlogfile(ctx,`Virtual Machine ip : ${username}@${host} connected`);
     } else {
       ctx.reply(`❌ Error connecting to VM ${host}`);
     }
@@ -205,6 +216,8 @@ export const setBotCommand = tryCatchWrapper(async (bot) => {
         ctx.reply(`🛑 Disconnected from VM ${session["host"]} successfully`, {
           reply_to_message_id: ctx.message.message_id,
         });
+      await appendlogfile(ctx,`🛑 Disconnected from VM ${session["host"]} successfully`);
+
     })
   );
 
@@ -242,6 +255,7 @@ export const setBotCommand = tryCatchWrapper(async (bot) => {
       const data = JSON.parse(ctx.callbackQuery.data);
       if (!data) {
         console.log("Error in parsing callback query data");
+        await appendlogfile(ctx,`Error in parsing callback query data ${ctx.callbackQuery.data}`)
         return;
       }
       if (data["NewConnection"]) {
@@ -303,6 +317,7 @@ export const setBotCommand = tryCatchWrapper(async (bot) => {
           reply_to_message_id: ctx.message.message_id,
         });
       console.error("Error while handling user request", err.message);
+      await appendlogfile(ctx,`Error while handling user request ${err.message}`)
     })
   );
 });
