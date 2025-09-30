@@ -9,7 +9,7 @@ import {tunnelmole} from 'tunnelmole';
 
 const PORT = process.env.PORT || 5000;
 
-if (!process.env.BOT_TOKEN_sshvm101Bot || !process.env.DOMAIN) {
+if (!process.env.BOT_TOKEN_sshvm101Bot) {
   console.log("Error in getting .env variables");
   process.exit(1);
 }
@@ -34,14 +34,16 @@ app.get('/',(req,res)=>{
 })
 app.listen(PORT,async()=>{
   console.log(`Server is running on port ${PORT}`);
-})
-
-const url = await tunnelmole({port: PORT});
+  const url = await tunnelmole({port: PORT});
 const DOMAIN = url;
+console.log({url})
 
 const info = await bot.telegram.setWebhook(`${DOMAIN}${WEBHOOK_PATH}`);
 // bot.launch();
 console.log("bot running",info);
+})
+
+
 
 
 process.once("SIGINT", () => {
