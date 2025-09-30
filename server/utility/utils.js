@@ -1,5 +1,22 @@
+import { mkdir } from "fs";
 import { buildConnection, showWelcomeMessage, userSessions } from "../bot/command.js";
 import User from "../Models/user.model.js";
+import fs from 'fs/promises';
+import path from 'path';
+import { fileURLToPath } from "url";
+
+export const timestamp = ()=>{
+  const options = {
+    day: 'numeric',
+    month: 'short',
+    year: '2-digit',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+}
+    const date = new Date(Date.now());
+    return date.toLocaleString('en-GB',options);
+}
 
 export const tryCatchWrapper =
   (fn) =>
@@ -8,6 +25,7 @@ export const tryCatchWrapper =
       return await fn(ctx, ...args);
     } catch (error) {
       console.error("Exception occured:", error.message);
+      await appendlogfile(ctx,`Exception occured: ${error.message}`)
       ctx.reply("⚠️ An error occured while processing your request");
     }
   };
@@ -121,6 +139,22 @@ export const replyPreserveFormatting = async (ctx,msg) =>{
           await ctx.reply(msg);
   }
 }
+
+export const intializelogfile = tryCatchsshWrapper(async(username)=>{
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
+  const logfilepath = path.join(__dirname,'..','logs',`${username}.log`);
+  await fs.mkdir(path.dirname(logfilepath),{recursive: true});
+  await fs.appendFile(logfilepath,`\n${timestamp()}     -----------------------User ${username} Connected-----------------\n`);
+})
+
+export const appendlogfile = tryCatchWrapper(async (ctx,content)=>{
+    const username = ctx.from.username || ctx.from.id || ctx.from.first_name || ctx.from.last_name || "unknown";
+        const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
+    const logfilepath = path.join(__dirname,'..','logs',`${username}.log`);
+    await fs.appendFile(logfilepath,`${timestamp()}     ${content}\n`);
+})
 
 export const welcomeMessage = `
 👋 Welcome to *SSH VM Connector Bot*! 🚀
