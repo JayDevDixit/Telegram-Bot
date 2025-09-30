@@ -124,7 +124,7 @@ const sessionValidate = tryCatchWrapper(async (ctx) => {
 const formatOutput = tryCatchWrapper(async (ctx, output) => {
   const session = await getSession(ctx);
   let reply_msg = `🌐 IP: ${session["host"]}  `;
-  reply_msg += output.code == 0 ? "✅ Success\n" : "❌ Error\n";
+  reply_msg += (output.code == 0 && output.stderr == '') ? "✅ Success\n" : "❌ Error\n";
   reply_msg += `\n${output.stdout}\n`;
   reply_msg += `${output.stderr}`;
   return reply_msg;
@@ -229,7 +229,7 @@ export const setBotCommand = tryCatchWrapper(async (bot) => {
         return;
       }
       const remotefilepath = join(session['cwd'],filename);
-      const localfilePath = join(await getdirPath(ctx),filename);
+      const localfilePath = join((await getdirPath(ctx)),filename);
       await downloadFileFromVM(localfilePath,remotefilepath,session['ssh']);
       await ctx.replyWithDocument({
         source:localfilePath, filename
@@ -260,11 +260,10 @@ export const setBotCommand = tryCatchWrapper(async (bot) => {
     /^\s*cd\s+.+/,
     tryCatchWrapper(async (ctx) => {
       if (!(await sessionValidate(ctx))) return;
-      const output = await execute(ctx);
+      const session = await getSession(ctx);
+      const output = await executecmd(`${ctx.text.trim()} && pwd`,session['cwd'],session['ssh']);
       if (output.code == 0 && output.stderr == "") {
-        const session = await getSession(ctx);
-        const path = ctx.text.trim().split(/\s+/)[1];
-        session["cwd"] = path;
+        session["cwd"] = output.stdout.split('\n')[0];
       }
       const reply_msg = await formatOutput(ctx, output);
       await ctx.reply(reply_msg);
