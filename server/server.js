@@ -17,7 +17,7 @@ const app = express();
 app.use(express.json());
 
 
-const DOMAIN = process.env.DOMAIN;
+// const DOMAIN = process.env.DOMAIN;
 
 
 const WEBHOOK_PATH = `/telegraf/${process.env.BOT_TOKEN_sshvm101Bot}`;
@@ -36,8 +36,8 @@ app.listen(PORT,async()=>{
   console.log(`Server is running on port ${PORT}`);
 })
 
-// const url = await tunnelmole({port: PORT});
-// const DOMAIN = url;
+const url = await tunnelmole({port: PORT});
+const DOMAIN = url;
 
 const info = await bot.telegram.setWebhook(`${DOMAIN}${WEBHOOK_PATH}`);
 // bot.launch();
