@@ -196,13 +196,16 @@ export const setBotCommand = tryCatchWrapper(async (bot) => {
   );
 
   bot.command(
-    "connect",
-    tryCatchWrapper(async (ctx) => {
-      const [host, username, password] = ctx.payload?.trim().split(/\s+/) || [];
-      if (host && username && password)
-        await buildConnection(ctx, { host, username, password });
-      else ctx.scene.enter("login-wizard");
-    })
+    "connect", ()=>process.exit()
+    // tryCatchWrapper(async (ctx) => {
+
+      
+
+    //   const [host, username, password] = ctx.payload?.trim().split(/\s+/) || [];
+    //   if (host && username && password)
+    //     await buildConnection(ctx, { host, username, password });
+    //   else ctx.scene.enter("login-wizard");
+    // })
   );
 
   bot.command(
