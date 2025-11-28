@@ -1,0 +1,11 @@
+FROM node:24
+
+WORKDIR /TelegramBot
+
+COPY . .
+
+WORKDIR /TelegramBot/server
+
+RUN npm install
+
+CMD ["npm" "start"]
